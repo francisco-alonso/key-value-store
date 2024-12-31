@@ -7,11 +7,14 @@ import (
 	"strings"
 
 	"github.com/francisco-alonso/key-value-store/internal/kvstore"
+	"github.com/francisco-alonso/key-value-store/internal/server"
 )
 
 func main() {
 	kv := kvstore.NewKeyValueStore()
 	reader := bufio.NewReader(os.Stdin)
+	
+	server.StartAPI(kv)
 		
 	fmt.Println("Key-Value Store CLI")
 	fmt.Println("Commands: SET key value, GET key, DELETE key, EXISTS key, EXIT")
