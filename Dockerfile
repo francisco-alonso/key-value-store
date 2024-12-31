@@ -1,30 +1,33 @@
-# Use official Golang image for building the binary
+# Use Go's official image as the builder
 FROM golang:1.23 AS builder
 
+# Set the current working directory inside the container
 WORKDIR /app
 
-# Copy go.mod and go.sum first
+# Copy the Go module files and download the dependencies
 COPY go.mod go.sum ./
+RUN go mod tidy
 
-# Download dependencies
-RUN go mod download
-
-# Copy the source code
+# Copy the source code into the container
 COPY . .
 
-# Build the CLI binary
-RUN go build -o kvstore ./cmd/kvstorecli
+# Build the Go binary for Linux architecture (cross-compile for Linux)
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o kvstore ./cmd/kvstorecli
 
-# Use a minimal image for running the binary
-FROM alpine:3.18
+# Use a minimal base image for the final container (Alpine)
+FROM debian:bullseye-slim
 
-WORKDIR /app
+# Install necessary dependencies (e.g., ca-certificates) to run the Go binary
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Copy the binary from the builder
-COPY --from=builder /app/kvstore .
+# Copy the built binary from the builder stage to the target image
+COPY --from=builder /app/kvstore /usr/local/bin/kvstore
 
-# Expose a default port (for future API usage)
+# Ensure the binary has execute permissions
+RUN chmod +x /usr/local/bin/kvstore
+
+# Expose the application port (assuming your Go service runs on port 8080)
 EXPOSE 8080
 
-# Set the entrypoint
-ENTRYPOINT ["./kvstore"]
+# Command to run the binary
+CMD ["/usr/local/bin/kvstore"]
