@@ -5,7 +5,7 @@ import (
 )
 
 func TestKeyValueStore_SetAndGet(t *testing.T) {
-	kv := NewKeyValueStore()
+	kv, _ := NewKeyValueStore("./filePath")
 
 	// Test setting a key-value pair
 	kv.Set("key1", "value1")
@@ -21,7 +21,7 @@ func TestKeyValueStore_SetAndGet(t *testing.T) {
 }
 
 func TestKeyValueStore_GetNonExistentKey(t *testing.T) {
-	kv := NewKeyValueStore()
+	kv, _ := NewKeyValueStore("./filePath")
 
 	// Test getting a non-existent key
 	_, err := kv.Get("nonexistent")
@@ -31,7 +31,7 @@ func TestKeyValueStore_GetNonExistentKey(t *testing.T) {
 }
 
 func TestKeyValueStore_Delete(t *testing.T) {
-	kv := NewKeyValueStore()
+	kv, _ := NewKeyValueStore("./filePath")
 
 	// Set and delete a key
 	kv.Set("key1", "value1")
@@ -48,7 +48,7 @@ func TestKeyValueStore_Delete(t *testing.T) {
 }
 
 func TestKeyValueStore_DeleteNonExistentKey(t *testing.T) {
-	kv := NewKeyValueStore()
+	kv, _ := NewKeyValueStore("./filePath")
 
 	// Attempt to delete a non-existent key
 	err := kv.Delete("nonexistent")
@@ -58,7 +58,7 @@ func TestKeyValueStore_DeleteNonExistentKey(t *testing.T) {
 }
 
 func TestKeyValueStore_Exists(t *testing.T) {
-	kv := NewKeyValueStore()
+	kv, _ := NewKeyValueStore("./filePath")
 
 	// Check existence of a non-existent key
 	if kv.Exists("key1") {

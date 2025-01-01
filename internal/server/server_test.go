@@ -12,7 +12,7 @@ import (
 
 func TestStartAPI(t *testing.T) {
 	// Initialize the KeyValueStore kvstore
-	kvStore := kvstore.NewKeyValueStore()
+	kvStore, _ := kvstore.NewKeyValueStore("./filePath")
 
 	// Set up the handlers
 	http.HandleFunc("/set", api.SetHandler(kvStore))

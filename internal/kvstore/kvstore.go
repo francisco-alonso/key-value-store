@@ -1,27 +1,39 @@
 package kvstore
 
 import (
+	"encoding/json"
 	"errors"
+	"os"
 	"sync"
 )
 
 type KeyValueStore struct {
 	store map[string]string
 	mu    sync.RWMutex
+	filePath string
 }
 
 // NewKeyValueStore initializes a new key-value store
-func NewKeyValueStore() *KeyValueStore {
-	return &KeyValueStore{
+func NewKeyValueStore(filePath string) (*KeyValueStore, error) {
+	kv := &KeyValueStore{
 		store: make(map[string]string),
+		filePath: filePath,
 	}
+	
+	if err := kv.load(); err != nil {
+		return nil, err
+	}
+	
+	return kv, nil
 }
 
 // Set stores or updates a key-value pair
-func (kv *KeyValueStore) Set(key, value string) {
+func (kv *KeyValueStore) Set(key, value string) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	kv.store[key] = value
+	
+	return kv.Save()
 }
 
 // Get retrieves the value associated with a key
@@ -43,7 +55,7 @@ func (kv *KeyValueStore) Delete(key string) error {
 		return errors.New("key not found")
 	}
 	delete(kv.store, key)
-	return nil
+	return kv.Save()
 }
 
 // Exists checks if a key exists in the store
@@ -52,4 +64,42 @@ func (kv *KeyValueStore) Exists(key string) bool {
 	defer kv.mu.RUnlock()
 	_, exists := kv.store[key]
 	return exists
+}
+
+// load reads the key-value store from the file
+func (kv *KeyValueStore) load() error {
+	// Open the file
+	file, err := os.OpenFile(kv.filePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// If the file is empty, just return
+	if stat, _ := file.Stat(); stat.Size() == 0 {
+		return nil
+	}
+
+	// Deserialize data from the file into the store
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&kv.store); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (kv *KeyValueStore) Save() error {
+	// Open the file
+	file, err := os.OpenFile(kv.filePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	// Serialize the store into JSON and write it to the file
+	encoder := json.NewEncoder(file)
+	if err := encoder.Encode(kv.store); err != nil {
+		return err
+	}
+	return nil
 }

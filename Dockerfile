@@ -20,11 +20,25 @@ FROM debian:bullseye-slim
 # Install necessary dependencies (e.g., ca-certificates) to run the Go binary
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /app/data
+
+# Optionally, copy a default `data.json` file (you can choose to provide one or leave it empty)
+COPY ./data/data.json /app/data/data.json
+
+RUN chmod 777 /app/data/data.json
+
+RUN chown -R root:root /app/data
+
+# Provide a default file path through environment variables
+ENV KVSTORE_FILE_PATH=/app/data/data.json
+
 # Copy the built binary from the builder stage to the target image
 COPY --from=builder /app/kvstore /usr/local/bin/kvstore
 
 # Ensure the binary has execute permissions
 RUN chmod +x /usr/local/bin/kvstore
+
+VOLUME ["/app/data"]
 
 # Expose the application port (assuming your Go service runs on port 8080)
 EXPOSE 8080
