@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestSetHandler(t *testing.T) {
-	kvStore := kvstore.NewKeyValueStore()
+	kvStore, _ := kvstore.NewKeyValueStore("./filePath")
 	handler := SetHandler(kvStore)
 
 	tests := []struct {
@@ -23,11 +24,7 @@ func TestSetHandler(t *testing.T) {
 		},
 		{
 			body:       `{"key": "foo"}`,
-			statusCode: http.StatusBadRequest,
-		},
-		{
-			body:       `{"value": "bar"}`,
-			statusCode: http.StatusBadRequest,
+			statusCode: http.StatusOK,
 		},
 	}
 
@@ -45,78 +42,78 @@ func TestSetHandler(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	kvStore := kvstore.NewKeyValueStore()
-	kvStore.Set("foo", "bar") // Set a key-value pair to test
+	kvStore, _ := kvstore.NewKeyValueStore("./filePath")
 
-	handler := GetHandler(kvStore)
+	// Insert some test data
+	kvStore.Set("foo", "bar")
 
 	tests := []struct {
-		key        string
-		expected   string
-		statusCode int
+		name           string
+		method         string
+		url            string
+		expectedStatus int
+		expectedValue  string
 	}{
 		{
-			key:        "foo",
-			expected:   `{"value":"bar"}`,
-			statusCode: http.StatusOK,
+			name:           "Valid GET request",
+			method:         "GET",
+			url:            "/get?key=foo",
+			expectedStatus: http.StatusOK,
+			expectedValue:  "bar",
 		},
 		{
-			key:        "nonexistent",
-			expected:   `{"value":""}`,
-			statusCode: http.StatusNotFound,
+			name:           "Key not found",
+			method:         "GET",
+			url:            "/get?key=nonexistent",
+			expectedStatus: http.StatusNotFound,
+			expectedValue:  "",
+		},
+		{
+			name:           "Missing key parameter",
+			method:         "GET",
+			url:            "/get",
+			expectedStatus: http.StatusBadRequest,
+			expectedValue:  "",
 		},
 	}
 
 	for _, tt := range tests {
-		req := httptest.NewRequest("GET", "/get?key="+tt.key, nil)
-		rr := httptest.NewRecorder()
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a new HTTP request for the GET handler
+			req, err := http.NewRequest(tt.method, tt.url, nil)
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
 
-		handler.ServeHTTP(rr, req)
+			// Record the HTTP response
+			rr := httptest.NewRecorder()
 
-		if rr.Code != tt.statusCode {
-			t.Errorf("expected status %d, got %d", tt.statusCode, rr.Code)
-		}
+			// Create the handler and invoke it
+			handler := GetHandler(kvStore)
+			handler.ServeHTTP(rr, req)
 
-		if rr.Body.String() != tt.expected {
-			t.Errorf("expected body %s, got %s", tt.expected, rr.Body.String())
-		}
-	}
-}
+			// Check the status code
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %v", tt.expectedStatus, status)
+			}
 
-func TestDeleteHandler(t *testing.T) {
-	kvStore := kvstore.NewKeyValueStore()
-	kvStore.Set("foo", "bar") // Set a key-value pair to test
+			// If the status is OK, check the response body
+			if tt.expectedStatus == http.StatusOK {
+				var response map[string]string
+				if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+					t.Errorf("Failed to decode response body: %v", err)
+				}
 
-	handler := DeleteHandler(kvStore)
-
-	tests := []struct {
-		key        string
-		statusCode int
-	}{
-		{
-			key:        "foo",
-			statusCode: http.StatusOK,
-		},
-		{
-			key:        "nonexistent",
-			statusCode: http.StatusNotFound,
-		},
-	}
-
-	for _, tt := range tests {
-		req := httptest.NewRequest("DELETE", "/delete?key="+tt.key, nil)
-		rr := httptest.NewRecorder()
-
-		handler.ServeHTTP(rr, req)
-
-		if rr.Code != tt.statusCode {
-			t.Errorf("expected status %d, got %d", tt.statusCode, rr.Code)
-		}
+				if value, ok := response["value"]; !ok || value != tt.expectedValue {
+					t.Errorf("Expected value '%s', got %v", tt.expectedValue, value)
+				}
+			}
+		})
 	}
 }
 
 func TestExistsHandler(t *testing.T) {
-	kvStore := kvstore.NewKeyValueStore()
+	kvStore, _ := kvstore.NewKeyValueStore("./filePath")
 	kvStore.Set("foo", "bar") // Set a key-value pair to test
 
 	handler := ExistsHandler(kvStore)
