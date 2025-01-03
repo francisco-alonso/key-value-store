@@ -3,6 +3,7 @@ package kvstore
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
 	"sync"
 )
@@ -33,6 +34,12 @@ func (kv *KeyValueStore) Set(key, value string) error {
 	defer kv.mu.Unlock()
 	kv.store[key] = value
 	
+	err := kv.Save()
+	
+	if err != nil {
+		log.Printf("unable to save data: %v", err)
+		return err
+	}
 	return kv.Save()
 }
 
@@ -55,6 +62,12 @@ func (kv *KeyValueStore) Delete(key string) error {
 		return errors.New("key not found")
 	}
 	delete(kv.store, key)
+	err := kv.Save()
+	
+	if err != nil {
+		log.Printf("unable to save data: %v", err)
+		return err
+	}
 	return kv.Save()
 }
 
